@@ -1,11 +1,13 @@
 import jwt from 'jsonwebtoken'
+import { Request } from 'express'
 
 interface JwtPayload {
     username: string
     hotel: string
+    isAdmin: boolean
 }
 
-function createJwt(username: string): string {
+export function createJwt(username: string, isAdmin: boolean): string {
     const secretKey = process.env.JWT_SECRET_KEY as string
 
     if (!secretKey) {
@@ -15,6 +17,7 @@ function createJwt(username: string): string {
     const payload: JwtPayload = {
         username,
         hotel: 'trivago',
+        isAdmin,
     }
 
     const options: jwt.SignOptions = {
@@ -27,5 +30,3 @@ function createJwt(username: string): string {
     const token = jwt.sign(payload, secretKey, options)
     return token
 }
-
-export default createJwt

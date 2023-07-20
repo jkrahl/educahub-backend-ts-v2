@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express'
 import User from '../models/User'
-import createJwt from '../utils/jwt'
+import { createJwt } from '../utils/jwt'
 import { errorLogger } from '../winston'
 
 const router = express.Router()
@@ -42,7 +42,7 @@ router.post('/login', async (req: Request, res: Response) => {
             })
         }
 
-        const token = createJwt(user.username)
+        const token = createJwt(user.username, user.isAdmin)
 
         return res.status(200).json({
             message: 'Login exitoso',
@@ -110,7 +110,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
         await newUser.save()
 
-        const token = createJwt(newUser.username)
+        const token = createJwt(newUser.username, newUser.isAdmin)
 
         return res.status(201).json({
             message: 'Usuario creado exitosamente',
