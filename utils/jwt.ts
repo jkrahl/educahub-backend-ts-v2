@@ -16,8 +16,8 @@ export function createJwt(username: string, isAdmin: boolean): string {
 
     const payload: JwtPayload = {
         username,
-        hotel: 'trivago',
         isAdmin,
+        hotel: 'trivago',
     }
 
     const options: jwt.SignOptions = {

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose, { Types } from 'mongoose'
 
 interface IUser {
     username: string
@@ -8,7 +8,7 @@ interface IUser {
     isVerified: boolean
     isBanned: boolean
     registerIP: string
-    tags?: string[]
+    tags?: Types.Array<string>
     createdAt: Date
 }
 
@@ -44,11 +44,7 @@ const UserSchema = new mongoose.Schema<IUser>({
         type: String,
         required: true,
     },
-    tags: [
-        {
-            type: String,
-        },
-    ],
+    tags: [String],
     createdAt: {
         type: Date,
         default: Date.now,
@@ -59,3 +55,4 @@ const UserSchema = new mongoose.Schema<IUser>({
 const User = mongoose.model<IUser>('User', UserSchema)
 
 export default User
+export { IUser }

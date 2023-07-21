@@ -1,12 +1,13 @@
 import express, { Express, Request, Response } from 'express'
 import dotenv from 'dotenv'
 dotenv.config()
+import mongoose from 'mongoose'
 import bodyParser from 'body-parser'
 import { infoLogger, errorLogger } from './winston'
 import { logger } from './middleware/logger'
 import authRouter from './routes/auth'
 import subjectsRouter from './routes/subjects'
-import mongoose from 'mongoose'
+import postsRouter from './routes/posts'
 
 const app: Express = express()
 
@@ -16,6 +17,7 @@ app.use(logger)
 
 app.use('/auth', authRouter)
 app.use('/subjects', subjectsRouter)
+app.use('/posts', postsRouter)
 ;(async () => {
     const port = process.env.PORT || 3000
     try {

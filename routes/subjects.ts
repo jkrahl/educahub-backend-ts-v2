@@ -1,14 +1,14 @@
 import express, { Request, Response } from 'express'
-import Subject from '../models/Subject'
-import { createJwt } from '../utils/jwt'
 import { errorLogger } from '../winston'
-import { jwt } from '../middleware/jwt'
 import { Request as JWTRequest } from 'express-jwt'
+import Subject from '../models/Subject'
+import { jwt } from '../middleware/jwt'
 
 const router = express.Router()
 
 router.get('/', async (req: Request, res: Response) => {
-    const allSubjects = await Subject.find()
+    // Get name and units of all subjects
+    const allSubjects = await Subject.find({}, ['name', 'units'])
 
     return res.status(200).json({
         message: 'Success',
