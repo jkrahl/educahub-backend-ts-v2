@@ -5,9 +5,6 @@ import mongoose from 'mongoose'
 import bodyParser from 'body-parser'
 import { infoLogger, errorLogger } from './winston'
 import { logger } from './middleware/logger'
-import authRouter from './routes/auth'
-import subjectsRouter from './routes/subjects'
-import postsRouter from './routes/posts'
 
 const app: Express = express()
 
@@ -15,10 +12,16 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(logger)
 
+import authRouter from './routes/auth'
+import subjectsRouter from './routes/subjects'
+import postsRouter from './routes/posts'
+import commentsRouter from './routes/comments'
 app.use('/auth', authRouter)
 app.use('/subjects', subjectsRouter)
 app.use('/posts', postsRouter)
+app.use('/comments', commentsRouter)
 ;(async () => {
+    console.log('Starting server...')
     const port = process.env.PORT || 3000
     try {
         await mongoose.connect(process.env.MONGO_URI as string)

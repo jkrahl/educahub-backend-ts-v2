@@ -95,24 +95,24 @@ router.post(
             })
         }
 
-        // Get user id from database
-        const username = req.auth?.username
-        const user = await User.findOne({ username }, '_id')
-
-        // If user doesn't exist, return 404
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found',
-            })
-        }
-
-        // Create slug
-        const slug = slugify(title, {
-            lower: true,
-        })
-        const postURL = `${slug}-${uuidv4().split('-')[0]}`
-
         try {
+            // Get user id from database
+            const username = req.auth?.username
+            const user = await User.findOne({ username }, '_id')
+
+            // If user doesn't exist, return 404
+            if (!user) {
+                return res.status(404).json({
+                    message: 'User not found',
+                })
+            }
+
+            // Create slug
+            const slug = slugify(title, {
+                lower: true,
+            })
+            const postURL = `${slug}-${uuidv4().split('-')[0]}`
+
             // Create post
             const post = await Post.create({
                 type,
@@ -179,6 +179,57 @@ router.get('/:postURL', async (req: Request, res: Response) => {
             message: e.message,
         })
 
+        return res.status(500).json({
+            message: 'Internal server error',
+        })
+    }
+})
+
+// Route to delete a post
+router.delete('/:postURL', jwt, async (req: JWTRequest, res: Response) => {
+    try {
+        // Find post
+        const post = await Post.findOne({
+            url: req.params.postURL,
+        })
+
+        // If post doesn't exist, return 404
+        if (!post) {
+            return res.status(404).json({
+                message: 'Not found',
+            })
+        }
+
+        // Get user id from database
+        const username = req.auth?.username
+        const user = await User.findOne({ username }, '_id')
+
+        // If user doesn't exist, return 404
+        if (!user) {
+            return res.status(404).json({
+                message: 'User not found',
+            })
+        }
+
+        // If user is not the author of the post, return 403
+        if (post.author.toString() !== user._id.toString()) {
+            return res.status(403).json({
+                message: 'Forbidden',
+            })
+        }
+
+        // Delete post
+        await Post.deleteOne({
+            url: req.params.postURL,
+        })
+
+        return res.status(200).json({
+            message: 'Post eliminado exitosamente',
+        })
+    } catch (e: any) {
+        errorLogger.error({
+            message: e.message,
+        })
         return res.status(500).json({
             message: 'Internal server error',
         })

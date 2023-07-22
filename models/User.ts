@@ -1,6 +1,6 @@
-import mongoose, { Types } from 'mongoose'
+import mongoose, { Document, Schema, Types } from 'mongoose'
 
-interface IUser {
+interface IUser extends Document {
     username: string
     email: string
     password: string
@@ -12,7 +12,7 @@ interface IUser {
     createdAt: Date
 }
 
-const UserSchema = new mongoose.Schema<IUser>({
+const UserSchema = new Schema<IUser>({
     username: {
         type: String,
         required: true,

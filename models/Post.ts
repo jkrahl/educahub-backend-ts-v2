@@ -17,7 +17,7 @@ interface IPost extends Document {
     unit?: string
 }
 
-const PostSchema: Schema = new Schema({
+const PostSchema: Schema = new Schema<IPost>({
     type: { type: String, enum: Object.values(PostType), required: true },
     title: { type: String, required: true },
     description: { type: String },
