@@ -15,11 +15,9 @@ app.use(logger)
 import authRouter from './routes/auth'
 import subjectsRouter from './routes/subjects'
 import postsRouter from './routes/posts'
-import commentsRouter from './routes/comments'
 app.use('/auth', authRouter)
 app.use('/subjects', subjectsRouter)
 app.use('/posts', postsRouter)
-app.use('/comments', commentsRouter)
 ;(async () => {
     console.log('Starting server...')
     const port = process.env.PORT || 3000
