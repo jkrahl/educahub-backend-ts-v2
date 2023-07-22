@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express'
 import User from '../models/User'
 import { createJwt } from '../utils/jwt'
-import { errorLogger } from '../winston'
+import { errorLogger } from '../utils/winston'
 
 const router = express.Router()
 

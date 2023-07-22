@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 import mongoose from 'mongoose'
 import bodyParser from 'body-parser'
-import { infoLogger, errorLogger } from './winston'
+import { infoLogger, errorLogger } from './utils/winston'
 import { logger } from './middleware/logger'
 
 const app: Express = express()

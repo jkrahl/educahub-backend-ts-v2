@@ -1,13 +1,16 @@
 import express, { Request, Response } from 'express'
-import { errorLogger } from '../winston'
+import { errorLogger } from '../utils/winston'
 import { Request as JWTRequest } from 'express-jwt'
 import slugify from 'slugify'
 import Post from '../models/Post'
 import User, { IUser } from '../models/User'
 import Comment from '../models/Comment'
 import { jwt } from '../middleware/jwt'
-import upload from '../middleware/multer'
+import { uploadFile } from '../utils/aws'
+import fileUpload from 'express-fileupload'
 import { v4 as uuidv4 } from 'uuid'
+import { GetObjectCommandOutput } from '@aws-sdk/client-s3'
+import { buffer } from 'stream/consumers'
 
 const router = express.Router()
 
@@ -31,7 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     try {
         const posts = await Post.find(filter)
-            .populate<{ author: IUser }>('author', 'username tags')
+            .populate<{ user: IUser }>('user', 'username tags')
             .exec()
 
         // Clean posts
@@ -40,8 +43,8 @@ router.get('/', async (req: Request, res: Response) => {
                 type: post.type,
                 title: post.title,
                 description: post.description,
-                author: post.author.username,
-                tags: post.author.tags,
+                user: post.user.username,
+                tags: post.user.tags,
                 url: post.url,
                 createdAt: post.createdAt,
                 subject: post.subject,
@@ -65,7 +68,11 @@ router.get('/', async (req: Request, res: Response) => {
 router.post(
     '/',
     jwt,
-    upload.single('file'),
+    fileUpload({
+        limits: {
+            fileSize: 25 * 1024 * 1024, // 25 MB
+        },
+    }),
     async (req: JWTRequest, res: Response) => {
         const { type, title, description, subject, unit } = req.body
 
@@ -83,9 +90,20 @@ router.post(
         }
 
         // If type is Document, we need to check if a file was uploaded
-        if (type === 'Document' && !req.file) {
+        if (type === 'Document' && !req.files?.file) {
             return res.status(400).json({
                 message: 'No file uploaded',
+            })
+        }
+
+        // Check if its a PDF
+        if (
+            type === 'Document' &&
+            // @ts-ignore
+            req.files?.file.mimetype !== 'application/pdf'
+        ) {
+            return res.status(400).json({
+                message: 'File must be a PDF',
             })
         }
 
@@ -107,21 +125,29 @@ router.post(
             })
             const postURL = `${slug}-${uuidv4().split('-')[0]}`
 
+            // If type is Document, we need to save the file
+            if (type === 'Document') {
+                const uploadSuccess = await uploadFile(
+                    req.files?.file,
+                    postURL + '.pdf'
+                )
+                if (!uploadSuccess) {
+                    return res.status(500).json({
+                        message: 'Internal server error',
+                    })
+                }
+            }
+
             // Create post
             const post = await Post.create({
                 type,
                 title,
                 description,
-                author: user._id,
+                user: user._id,
                 url: postURL,
                 subject,
                 unit,
             })
-
-            // If type is Document, we need to save the file
-            /*if (type === 'Document') {
-        await uploadFile(req.file, postURL)
-    }*/
 
             return res.status(201).json({
                 message: 'Post creado exitosamente',
@@ -145,7 +171,7 @@ router.get('/:postURL', async (req: Request, res: Response) => {
         const post = await Post.findOne({
             url: req.params.postURL,
         })
-            .populate<{ author: IUser }>('author', 'username tags')
+            .populate<{ user: IUser }>('user', 'username tags')
             .exec()
 
         // If post doesn't exist, return 404
@@ -159,8 +185,8 @@ router.get('/:postURL', async (req: Request, res: Response) => {
             type: post.type,
             title: post.title,
             description: post.description,
-            author: post.author.username,
-            tags: post.author.tags,
+            user: post.user.username,
+            tags: post.user.tags,
             url: post.url,
             createdAt: post.createdAt,
             subject: post.subject,
@@ -168,6 +194,36 @@ router.get('/:postURL', async (req: Request, res: Response) => {
         }
 
         return res.status(200).json(cleanedPost)
+    } catch (e: any) {
+        errorLogger.error({
+            message: e.message,
+        })
+
+        return res.status(500).json({
+            message: 'Internal server error',
+        })
+    }
+})
+
+// Route to get the file of a post
+router.get('/:postURL/file', async (req: Request, res: Response) => {
+    try {
+        const post = await Post.findOne({
+            url: req.params.postURL,
+            type: 'Document',
+        })
+
+        // If post doesn't exist, return 404
+        if (!post) {
+            return res.status(404).json({
+                message: 'Not found',
+            })
+        }
+
+        // Redirect to s3 url
+        return res.redirect(
+            `https://${process.env.AWS_BUCKET_NAME}.s3.eu-central-1.amazonaws.com/${post.url}.pdf`
+        )
     } catch (e: any) {
         errorLogger.error({
             message: e.message,
@@ -205,8 +261,8 @@ router.delete('/:postURL', jwt, async (req: JWTRequest, res: Response) => {
             })
         }
 
-        // If user is not the author of the post, return 403
-        if (post.author.toString() !== user._id.toString()) {
+        // If user is not the user of the post, return 403
+        if (post.user.toString() !== user._id.toString()) {
             return res.status(403).json({
                 message: 'Forbidden',
             })
@@ -381,7 +437,7 @@ router.delete(
                 })
             }
 
-            // If user is not the author of the comment, return 403
+            // If user is not the user of the comment, return 403
             if (comment.user.toString() !== user._id.toString()) {
                 return res.status(403).json({
                     message: 'Forbidden',

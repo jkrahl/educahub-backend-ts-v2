@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express'
-import { errorLogger } from '../winston'
+import { errorLogger } from '../utils/winston'
 import { Request as JWTRequest } from 'express-jwt'
 import Subject from '../models/Subject'
 import { jwt } from '../middleware/jwt'

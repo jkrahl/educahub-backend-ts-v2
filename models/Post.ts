@@ -10,7 +10,7 @@ interface IPost extends Document {
     type: PostType
     title: string
     description?: string
-    author: Types.ObjectId
+    user: Types.ObjectId
     url: string
     createdAt: Date
     subject?: string
@@ -21,7 +21,7 @@ const PostSchema: Schema = new Schema<IPost>({
     type: { type: String, enum: Object.values(PostType), required: true },
     title: { type: String, required: true },
     description: { type: String },
-    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     url: { type: String },
     createdAt: { type: Date, default: Date.now, required: true },
     subject: { type: String },
