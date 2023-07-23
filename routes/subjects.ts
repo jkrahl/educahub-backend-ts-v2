@@ -1,8 +1,7 @@
 import express, { Request, Response } from 'express'
 import { errorLogger } from '../utils/winston'
-import { Request as JWTRequest } from 'express-jwt'
+import { getUserFromReq } from '../utils/jwt'
 import Subject from '../models/Subject'
-import { jwt } from '../middleware/jwt'
 
 const router = express.Router()
 
@@ -17,9 +16,10 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // Route to create multiple subjects
-router.post('/', jwt, async (req: JWTRequest, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
+    const user = await getUserFromReq(req)
     // If not admin, return 401
-    if (!req.auth?.isAdmin) {
+    if (!user?.isAdmin) {
         return res.status(401).json({
             message: 'Unauthorized',
         })
