@@ -1,7 +1,10 @@
 import express, { Request, Response } from 'express'
+import { v4 as uuidv4 } from 'uuid'
 import User from '../models/User'
 import { createJwt } from '../utils/jwt'
 import { errorLogger } from '../utils/winston'
+import redisClient from '../models/redis'
+import { sendResetToken } from '../utils/mailer'
 
 const router = express.Router()
 
@@ -19,7 +22,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     try {
-        // Find a non-deleted user with the given email
+        // Find a user with the given email
         const user = await User.findOne({
             email,
         })
@@ -136,7 +139,7 @@ router.delete('/delete', async (req: Request, res: Response) => {
     }
 
     try {
-        // Find a non-deleted user with the given email
+        // Find a user with the given email
         const user = await User.findOne({
             email,
         })
@@ -158,6 +161,112 @@ router.delete('/delete', async (req: Request, res: Response) => {
 
         return res.status(200).json({
             message: 'Usuario eliminado exitosamente',
+        })
+    } catch (e: any) {
+        errorLogger.error({
+            message: e.message,
+        })
+        return res.status(500).json({
+            message: 'Error interno del servidor',
+        })
+    }
+})
+
+// Route to request a password reset token
+router.post('/reset', async (req: Request, res: Response) => {
+    const { email } = req.body
+
+    if (!email) {
+        return res.status(400).json({
+            message: 'Campos vacíos',
+        })
+    }
+
+    // Validate email
+    if (!validateEmail(email)) {
+        return res.status(400).json({
+            message: 'Email inválido',
+        })
+    }
+
+    try {
+        // Find a non-deleted user with the given email
+        const user = await User.findOne({
+            email,
+        })
+
+        // If user doesn't exist, return 200 anyway
+        if (!user) {
+            return res.status(200).json({
+                message: 'OK',
+            })
+        }
+
+        // Generate a reset token
+        const token = uuidv4()
+
+        // Save the token in Redis
+        await redisClient.set(`reset:${token}`, email, {
+            EX: 60 * 60 * 24,
+        })
+
+        // Send the token to the user's email
+        await sendResetToken(email, token)
+
+        return res.status(200).json({
+            message: 'OK',
+        })
+    } catch (e: any) {
+        errorLogger.error({
+            message: e.message,
+        })
+        return res.status(500).json({
+            message: 'Error interno del servidor',
+        })
+    }
+})
+
+// Route to reset a password
+router.post('/reset/:token', async (req: Request, res: Response) => {
+    const { token } = req.params
+    const { password } = req.body
+
+    if (!token || !password) {
+        return res.status(400).json({
+            message: 'Campos vacíos',
+        })
+    }
+
+    try {
+        // Find the email associated with the token
+        const email = await redisClient.get(`reset:${token}`)
+        if (!email) {
+            return res.status(404).json({
+                message: 'Token inválido o caducado',
+            })
+        }
+
+        // Find a user with the given email
+        const user = await User.findOne({
+            email,
+        })
+
+        if (!user) {
+            return res.status(404).json({
+                message: 'Usuario no encontrado',
+            })
+        }
+
+        // Update the user's password
+        user.password = password
+
+        // Save the user
+        await user.save()
+
+        // Delete the token
+        await redisClient.del(`reset:${token}`)
+        return res.status(200).json({
+            message: 'OK',
         })
     } catch (e: any) {
         errorLogger.error({
