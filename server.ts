@@ -3,15 +3,35 @@ import dotenv from 'dotenv'
 dotenv.config()
 import mongoose from 'mongoose'
 import bodyParser from 'body-parser'
-import redisClient from './models/redis'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import { infoLogger, errorLogger } from './utils/winston'
 import { logger } from './middleware/logger'
+import cors from 'cors'
 
 const app: Express = express()
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(logger)
+app.use(
+    helmet({
+        crossOriginResourcePolicy: {
+            policy: 'cross-origin',
+        },
+    })
+)
+app.use(
+    rateLimit({
+        windowMs: 5 * 60 * 1000,
+        max: 100,
+    })
+)
+app.use(
+    cors({
+        origin: process.env.CORS_ORIGIN,
+    })
+)
 
 import authRouter from './routes/auth'
 import subjectsRouter from './routes/subjects'
@@ -25,12 +45,9 @@ app.use('/', indexRouter)
     console.log('Starting server...')
     const port = process.env.PORT || 3000
     try {
+        if (!process.env.MONGO_URI) throw new Error('MONGO_URI not found')
+
         await mongoose.connect(process.env.MONGO_URI as string)
-
-        await redisClient.connect()
-
-        // Set admin announcement
-        await redisClient.set('announcement', '¡Bienvenido a EducaHub!')
 
         app.listen(port, () => {
             infoLogger.info({

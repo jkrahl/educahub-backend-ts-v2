@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express'
 import { v4 as uuidv4 } from 'uuid'
-import User from '../models/User'
+import User, { IUser } from '../models/User'
+import ResetToken from '../models/ResetToken'
 import { createJwt } from '../utils/jwt'
 import { errorLogger } from '../utils/winston'
-import redisClient from '../models/redis'
 import { sendResetToken } from '../utils/mailer'
 
 const router = express.Router()
@@ -205,10 +205,13 @@ router.post('/reset', async (req: Request, res: Response) => {
         // Generate a reset token
         const token = uuidv4()
 
-        // Save the token in Redis
-        await redisClient.set(`reset:${token}`, email, {
-            EX: 60 * 60 * 24,
+        // Save the token
+        const resetToken = new ResetToken({
+            token,
+            user: user._id,
         })
+
+        await resetToken.save()
 
         // Send the token to the user's email
         await sendResetToken(email, token)
@@ -239,8 +242,13 @@ router.post('/reset/:token', async (req: Request, res: Response) => {
 
     try {
         // Find the email associated with the token
-        const email = await redisClient.get(`reset:${token}`)
-        if (!email) {
+        const resetTokenDoc = await ResetToken.findOne({
+            token,
+        })
+            .populate<{ user: IUser }>('user', 'email')
+            .exec()
+
+        if (!resetTokenDoc) {
             return res.status(404).json({
                 message: 'Token inválido o caducado',
             })
@@ -248,7 +256,7 @@ router.post('/reset/:token', async (req: Request, res: Response) => {
 
         // Find a user with the given email
         const user = await User.findOne({
-            email,
+            email: resetTokenDoc.user.email,
         })
 
         if (!user) {
@@ -264,7 +272,9 @@ router.post('/reset/:token', async (req: Request, res: Response) => {
         await user.save()
 
         // Delete the token
-        await redisClient.del(`reset:${token}`)
+        await ResetToken.deleteOne({
+            token,
+        })
         return res.status(200).json({
             message: 'OK',
         })

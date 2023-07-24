@@ -25,7 +25,6 @@ export const requestLogger = winston.createLogger({
     format: winston.format.json(),
     defaultMeta: { service: 'user-service' },
     transports: [
-        new winston.transports.Console(),
         new winston.transports.File({ filename: 'requests.log' }),
     ],
 })
