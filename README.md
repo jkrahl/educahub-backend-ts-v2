@@ -11,3 +11,9 @@ AWS_BUCKET_NAME
 MAILERSEND_API_KEY
 CORS_ORIGIN
 ```
+
+## Deploy on DigitalOcean App Platform
+Build command:
+```bash
+npm install --production=false && npm run build && npm ci
+```
