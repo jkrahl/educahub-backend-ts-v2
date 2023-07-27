@@ -7,12 +7,17 @@ const router = express.Router()
 
 router.get('/', async (req: Request, res: Response) => {
     // Get name and units of all subjects
-    const allSubjects = await Subject.find({}, ['name', 'units'])
+    const subjects = await Subject.find({}, ['name', 'units'])
 
-    return res.status(200).json({
-        message: 'Success',
-        subjects: allSubjects,
+    // Clean up the units array
+    const cleanedSubjects = subjects.map((subject) => {
+        return {
+            name: subject.name,
+            units: subject.units
+        }
     })
+
+    return res.status(200).json(cleanedSubjects)
 })
 
 // Route to create multiple subjects
