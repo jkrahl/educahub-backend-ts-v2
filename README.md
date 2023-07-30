@@ -15,5 +15,5 @@ CORS_ORIGIN
 ## Deploy on DigitalOcean App Platform
 Build command:
 ```bash
-npm install --production=false && npm run build && npm ci
+npm ci && npm run build
 ```

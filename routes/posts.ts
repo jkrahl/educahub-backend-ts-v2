@@ -468,7 +468,7 @@ router.post('/:postURL/likes', async (req: Request, res: Response) => {
 
         // Check if user already liked the post
         const alreadyLiked = await Like.findOne({
-            user: user._id,
+            likeUser: user._id,
             post: post._id,
         })
 
@@ -481,8 +481,9 @@ router.post('/:postURL/likes', async (req: Request, res: Response) => {
 
         // Create like
         await Like.create({
-            user: user,
+            likeUser: user,
             post: post._id,
+            postUser: post.user,
         })
 
         return res.status(200).json({
@@ -523,7 +524,7 @@ router.delete('/:postURL/likes', async (req: Request, res: Response) => {
 
         // Check if user already liked the post
         const alreadyLiked = await Like.findOne({
-            user: user._id,
+            likeUser: user._id,
             post: post._id,
         })
 
@@ -536,8 +537,9 @@ router.delete('/:postURL/likes', async (req: Request, res: Response) => {
 
         // Delete like
         await Like.deleteOne({
-            user: user._id,
+            likeUser: user._id,
             post: post._id,
+            postUser: post.user,
         })
 
         return res.status(200).json({
@@ -585,7 +587,7 @@ router.get('/:postURL/likes', async (req: Request, res: Response) => {
 
         // Check if user liked the post
         const userLiked = await Like.findOne({
-            user: user._id,
+            likeUser: user._id,
             post: post._id,
         })
 

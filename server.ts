@@ -23,8 +23,8 @@ app.use(
 )
 app.use(
     rateLimit({
-        windowMs: 5 * 60 * 1000,
-        max: 100,
+        windowMs: 5 * 60 * 1000, // 5 minutes
+        max: 250,
     })
 )
 app.use(
