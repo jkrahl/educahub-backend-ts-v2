@@ -33,6 +33,8 @@ router.get('/', async (req: Request, res: Response) => {
     try {
         const posts = await Post.find(filter)
             .populate<{ user: IUser }>('user', 'username tags')
+            .sort({ createdAt: -1 })
+            .limit(20)
             .exec()
 
         // Clean posts
