@@ -36,10 +36,12 @@ app.use(
 import authRouter from './routes/auth'
 import subjectsRouter from './routes/subjects'
 import postsRouter from './routes/posts'
+import usersRouter from './routes/users'
 import indexRouter from './routes/index'
 app.use('/auth', authRouter)
 app.use('/subjects', subjectsRouter)
 app.use('/posts', postsRouter)
+app.use('/u', usersRouter)
 app.use('/', indexRouter)
 ;(async () => {
     console.log('Starting server...')
