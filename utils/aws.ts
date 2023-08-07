@@ -15,7 +15,7 @@ const s3Config = {
 const s3Client = new S3Client(s3Config)
 
 // Upload file to AWS S3 function that returns an OK response if the upload was successful
-export const uploadFile = async (file: any, fileName: string) => {
+export const uploadFile = async (file: Buffer, fileName: string) => {
     if(!process.env.AWS_BUCKET_NAME) throw new Error('AWS_BUCKET_NAME not found')
     if(!process.env.AWS_ACCESS_KEY) throw new Error('AWS_ACCESS_KEY not found')
     if(!process.env.AWS_ACCESS_SECRET) throw new Error('AWS_ACCESS_SECRET not found')
@@ -23,12 +23,12 @@ export const uploadFile = async (file: any, fileName: string) => {
     const params: PutObjectCommandInput = {
         Bucket: process.env.AWS_BUCKET_NAME,
         Key: fileName,
-        Body: file.data,
+        Body: file,
+        ContentType: 'application/pdf',
     }
 
     try {
         const res = await s3Client.send(new PutObjectCommand(params))
-        console.log(res)
         return {
             success: true,
         }

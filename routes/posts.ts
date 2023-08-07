@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express'
 import { errorLogger } from '../utils/winston'
 import slugify from 'slugify'
+import multer from 'multer'
 import Post from '../models/Post'
 import { IUser } from '../models/User'
 import Comment from '../models/Comment'
@@ -67,11 +68,12 @@ router.get('/', async (req: Request, res: Response) => {
 // Route to create a post
 router.post(
     '/',
-    fileUpload({
+    multer({
         limits: {
             fileSize: 25 * 1024 * 1024, // 25 MB
         },
-    }),
+        storage: multer.memoryStorage(),
+    }).single('file'),
     async (req: Request, res: Response) => {
         const user = await getUserFromReq(req)
 
@@ -97,7 +99,7 @@ router.post(
         }
 
         // If type is Document, we need to check if a file was uploaded
-        if (type === 'Document' && !req.files?.file) {
+        if (type === 'Document' && !req.file) {
             return res.status(400).json({
                 message: 'No file uploaded',
             })
@@ -106,8 +108,7 @@ router.post(
         // Check if its a PDF
         if (
             type === 'Document' &&
-            // @ts-ignore
-            req.files?.file.mimetype !== 'application/pdf'
+            req.file?.mimetype !== 'application/pdf'
         ) {
             return res.status(400).json({
                 message: 'File must be a PDF',
@@ -122,9 +123,9 @@ router.post(
             const postURL = `${slug}-${uuidv4().split('-')[0]}`
 
             // If type is Document, we need to save the file
-            if (type === 'Document') {
+            if (type === 'Document' && req.file) {
                 const uploadSuccess = await uploadFile(
-                    req.files?.file,
+                    req.file.buffer,
                     postURL + '.pdf'
                 )
                 if (!uploadSuccess) {
