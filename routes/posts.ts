@@ -3,13 +3,12 @@ import { errorLogger } from '../utils/winston'
 import slugify from 'slugify'
 import multer from 'multer'
 import Post from '../models/Post'
-import { IUser } from '../models/User'
+import { IUser, getUserFromSub } from '../models/User'
 import Comment from '../models/Comment'
 import Like from '../models/Like'
 import { uploadFile } from '../utils/aws'
-import { getUserFromReq } from '../utils/jwt'
-import fileUpload from 'express-fileupload'
 import { v4 as uuidv4 } from 'uuid'
+import { checkJwt } from '../utils/jwt'
 
 const router = express.Router()
 
@@ -68,6 +67,7 @@ router.get('/', async (req: Request, res: Response) => {
 // Route to create a post
 router.post(
     '/',
+    checkJwt,
     multer({
         limits: {
             fileSize: 25 * 1024 * 1024, // 25 MB
@@ -75,7 +75,7 @@ router.post(
         storage: multer.memoryStorage(),
     }).single('file'),
     async (req: Request, res: Response) => {
-        const user = await getUserFromReq(req)
+        const user = await getUserFromSub(req.auth?.payload.sub || '')
 
         if (!user) {
             return res.status(401).json({
@@ -106,10 +106,7 @@ router.post(
         }
 
         // Check if its a PDF
-        if (
-            type === 'Document' &&
-            req.file?.mimetype !== 'application/pdf'
-        ) {
+        if (type === 'Document' && req.file?.mimetype !== 'application/pdf') {
             return res.status(400).json({
                 message: 'File must be a PDF',
             })
@@ -233,8 +230,8 @@ router.get('/:postURL/file', async (req: Request, res: Response) => {
 })
 
 // Route to delete a post
-router.delete('/:postURL', async (req: Request, res: Response) => {
-    const user = await getUserFromReq(req)
+router.delete('/:postURL', checkJwt, async (req: Request, res: Response) => {
+    const user = await getUserFromSub(req.auth?.payload.sub || '')
 
     if (!user) {
         return res.status(401).json({
@@ -281,61 +278,65 @@ router.delete('/:postURL', async (req: Request, res: Response) => {
 })
 
 // Route to create a comment
-router.post('/:postURL/comments', async (req: Request, res: Response) => {
-    const user = await getUserFromReq(req)
+router.post(
+    '/:postURL/comments',
+    checkJwt,
+    async (req: Request, res: Response) => {
+        const user = await getUserFromSub(req.auth?.payload.sub || '')
 
-    if (!user) {
-        return res.status(401).json({
-            message: 'Unauthorized',
-        })
-    }
-
-    const postURL = req.params.postURL
-    const { content } = req.body
-
-    if (!content || !postURL) {
-        return res.status(400).json({
-            message: 'Missing parameters',
-        })
-    }
-
-    try {
-        // Find post
-        const post = await Post.findOne({ url: postURL })
-
-        // If no post was found, return 400
-        if (!post) {
-            return res.status(400).json({
-                message: 'Post not found',
+        if (!user) {
+            return res.status(401).json({
+                message: 'Unauthorized',
             })
         }
 
-        // Generate uuid
-        const uuid = uuidv4()
+        const postURL = req.params.postURL
+        const { content } = req.body
 
-        // Create comment
-        const comment = await Comment.create({
-            uuid,
-            text: content,
-            user: user._id,
-            post: post._id,
-        })
+        if (!content || !postURL) {
+            return res.status(400).json({
+                message: 'Missing parameters',
+            })
+        }
 
-        // Return comment
-        return res.status(200).json({
-            message: 'Comentario creado exitosamente',
-            commentUUID: comment.uuid,
-        })
-    } catch (e: any) {
-        errorLogger.error({
-            message: e.message,
-        })
+        try {
+            // Find post
+            const post = await Post.findOne({ url: postURL })
 
-        return res.status(500).json({
-            message: 'Internal server error',
-        })
+            // If no post was found, return 400
+            if (!post) {
+                return res.status(400).json({
+                    message: 'Post not found',
+                })
+            }
+
+            // Generate uuid
+            const uuid = uuidv4()
+
+            // Create comment
+            const comment = await Comment.create({
+                uuid,
+                text: content,
+                user: user._id,
+                post: post._id,
+            })
+
+            // Return comment
+            return res.status(200).json({
+                message: 'Comentario creado exitosamente',
+                commentUUID: comment.uuid,
+            })
+        } catch (e: any) {
+            errorLogger.error({
+                message: e.message,
+            })
+
+            return res.status(500).json({
+                message: 'Internal server error',
+            })
+        }
     }
-})
+)
 
 // Route to get the comments of a post
 router.get('/:postURL/comments', async (req: Request, res: Response) => {
@@ -381,8 +382,9 @@ router.get('/:postURL/comments', async (req: Request, res: Response) => {
 // Route to delete a comment
 router.delete(
     '/:postURL/comments/:commentUUID',
+    checkJwt,
     async (req: Request, res: Response) => {
-        const user = await getUserFromReq(req)
+        const user = await getUserFromSub(req.auth?.payload.sub || '')
 
         if (!user) {
             return res.status(401).json({
@@ -447,122 +449,130 @@ router.delete(
 )
 
 // Route to like a post
-router.post('/:postURL/likes', async (req: Request, res: Response) => {
-    const user = await getUserFromReq(req)
+router.post(
+    '/:postURL/likes',
+    checkJwt,
+    async (req: Request, res: Response) => {
+        const user = await getUserFromSub(req.auth?.payload.sub || '')
 
-    if (!user) {
-        return res.status(401).json({
-            message: 'Unauthorized',
-        })
-    }
-
-    try {
-        // Find post
-        const post = await Post.findOne({
-            url: req.params.postURL,
-        })
-
-        // If post doesn't exist, return 404
-        if (!post) {
-            return res.status(404).json({
-                message: 'Post not found',
+        if (!user) {
+            return res.status(401).json({
+                message: 'Unauthorized',
             })
         }
 
-        // Check if user already liked the post
-        const alreadyLiked = await Like.findOne({
-            likeUser: user._id,
-            post: post._id,
-        })
+        try {
+            // Find post
+            const post = await Post.findOne({
+                url: req.params.postURL,
+            })
 
-        // If user already liked the post, return 400
-        if (alreadyLiked) {
-            return res.status(400).json({
-                message: 'Already liked',
+            // If post doesn't exist, return 404
+            if (!post) {
+                return res.status(404).json({
+                    message: 'Post not found',
+                })
+            }
+
+            // Check if user already liked the post
+            const alreadyLiked = await Like.findOne({
+                likeUser: user._id,
+                post: post._id,
+            })
+
+            // If user already liked the post, return 400
+            if (alreadyLiked) {
+                return res.status(400).json({
+                    message: 'Already liked',
+                })
+            }
+
+            // Create like
+            await Like.create({
+                likeUser: user,
+                post: post._id,
+                postUser: post.user,
+            })
+
+            return res.status(200).json({
+                message: 'Post liked',
+            })
+        } catch (e: any) {
+            errorLogger.error({
+                message: e.message,
+            })
+            return res.status(500).json({
+                message: 'Internal server error',
             })
         }
-
-        // Create like
-        await Like.create({
-            likeUser: user,
-            post: post._id,
-            postUser: post.user,
-        })
-
-        return res.status(200).json({
-            message: 'Post liked',
-        })
-    } catch (e: any) {
-        errorLogger.error({
-            message: e.message,
-        })
-        return res.status(500).json({
-            message: 'Internal server error',
-        })
     }
-})
+)
 
 // Route to unlike a post
-router.delete('/:postURL/likes', async (req: Request, res: Response) => {
-    const user = await getUserFromReq(req)
+router.delete(
+    '/:postURL/likes',
+    checkJwt,
+    async (req: Request, res: Response) => {
+        const user = await getUserFromSub(req.auth?.payload.sub || '')
 
-    if (!user) {
-        return res.status(401).json({
-            message: 'Unauthorized',
-        })
-    }
-
-    try {
-        // Find post
-        const post = await Post.findOne({
-            url: req.params.postURL,
-        })
-
-        // If post doesn't exist, return 404
-        if (!post) {
-            return res.status(404).json({
-                message: 'Post not found',
+        if (!user) {
+            return res.status(401).json({
+                message: 'Unauthorized',
             })
         }
 
-        // Check if user already liked the post
-        const alreadyLiked = await Like.findOne({
-            likeUser: user._id,
-            post: post._id,
-        })
+        try {
+            // Find post
+            const post = await Post.findOne({
+                url: req.params.postURL,
+            })
 
-        // If user didn't like the post, return 400
-        if (!alreadyLiked) {
-            return res.status(400).json({
-                message: 'Not liked',
+            // If post doesn't exist, return 404
+            if (!post) {
+                return res.status(404).json({
+                    message: 'Post not found',
+                })
+            }
+
+            // Check if user already liked the post
+            const alreadyLiked = await Like.findOne({
+                likeUser: user._id,
+                post: post._id,
+            })
+
+            // If user didn't like the post, return 400
+            if (!alreadyLiked) {
+                return res.status(400).json({
+                    message: 'Not liked',
+                })
+            }
+
+            // Delete like
+            await Like.deleteOne({
+                likeUser: user._id,
+                post: post._id,
+                postUser: post.user,
+            })
+
+            return res.status(200).json({
+                message: 'Post unliked',
+            })
+        } catch (e: any) {
+            errorLogger.error({
+                message: e.message,
+            })
+            return res.status(500).json({
+                message: 'Internal server error',
             })
         }
-
-        // Delete like
-        await Like.deleteOne({
-            likeUser: user._id,
-            post: post._id,
-            postUser: post.user,
-        })
-
-        return res.status(200).json({
-            message: 'Post unliked',
-        })
-    } catch (e: any) {
-        errorLogger.error({
-            message: e.message,
-        })
-        return res.status(500).json({
-            message: 'Internal server error',
-        })
     }
-})
+)
 
 // Route to get the likes of a post
 // User needs to be authenticated
 // Route will return the number of likes and if the user liked the post
-router.get('/:postURL/likes', async (req: Request, res: Response) => {
-    const user = await getUserFromReq(req)
+router.get('/:postURL/likes', checkJwt, async (req: Request, res: Response) => {
+    const user = await getUserFromSub(req.auth?.payload.sub || '')
 
     if (!user) {
         return res.status(401).json({

@@ -1,15 +1,9 @@
-import mongoose, { Document, Schema, Types } from 'mongoose'
+import mongoose, { Document, Schema } from 'mongoose'
 
 interface IUser extends Document {
     username: string
-    email: string
-    password: string
-    isAdmin: boolean
-    isVerified: boolean
-    isBanned: boolean
-    registerIP: string
-    tags?: Types.Array<string>
-    createdAt: Date
+    sub: string
+    tags: string[]
 }
 
 const UserSchema = new Schema<IUser>({
@@ -19,40 +13,29 @@ const UserSchema = new Schema<IUser>({
         unique: true,
         minlength: 3,
     },
-    email: {
+    sub: {
         type: String,
         required: true,
         unique: true,
-        minlength: 3,
     },
-    password: {
-        type: String,
-        required: true,
-        minlength: 3,
-    },
-    isAdmin: {
-        type: Boolean,
-        default: false,
-        required: true,
-    },
-    isBanned: {
-        type: Boolean,
-        default: false,
-        required: true,
-    },
-    registerIP: {
-        type: String,
-        required: true,
-    },
-    tags: [String],
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        required: true,
+    tags: {
+        type: [String],
     },
 })
+
+// Function to get user from sub
+const getUserFromSub = async function (sub: string) {
+    if (!sub) {
+        return null
+    }
+    const user = await User.findOne({ sub })
+    if (!user) {
+        return null
+    }
+    return user
+}
 
 const User = mongoose.model<IUser>('User', UserSchema)
 
 export default User
-export { IUser }
+export { IUser, getUserFromSub }

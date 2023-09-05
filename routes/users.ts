@@ -2,16 +2,12 @@ import express, { Request, Response } from 'express'
 import { errorLogger } from '../utils/winston'
 import Post from '../models/Post'
 import User, { IUser } from '../models/User'
-import { getUserFromReq } from '../utils/jwt'
-
 const router = express.Router()
 
 // Route to get a user
 router.get('/:username', async (req: Request, res: Response) => {
     const { username } = req.params
     try {
-        const user = await getUserFromReq(req)
-
         const foundUser = await User.findOne({ username })
 
         if (!foundUser) {
@@ -41,9 +37,7 @@ router.get('/:username', async (req: Request, res: Response) => {
 
         let cleanedUser = {
             username: foundUser.username,
-            isAdmin: foundUser.isAdmin,
             tags: foundUser.tags,
-            createdAt: foundUser.createdAt,
         }
 
         return res.status(200).json({ user: cleanedUser, posts: cleanedPosts })
