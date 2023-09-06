@@ -91,8 +91,8 @@ router.post(
             })
         }
 
-        // Check if type is Document, Link or Question
-        if (type !== 'Document' && type !== 'Link' && type !== 'Question') {
+        // Check if type is Document or Question
+        if (type !== 'Document' && type !== 'Question') {
             return res.status(400).json({
                 message: 'Bad request',
             })

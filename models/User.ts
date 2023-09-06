@@ -1,9 +1,9 @@
-import mongoose, { Document, Schema } from 'mongoose'
+import mongoose, { Document, Schema, Types } from 'mongoose'
 
 interface IUser extends Document {
     username: string
     sub: string
-    tags: string[]
+    tags: Types.Array<string>
 }
 
 const UserSchema = new Schema<IUser>({

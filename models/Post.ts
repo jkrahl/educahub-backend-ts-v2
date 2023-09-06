@@ -2,7 +2,6 @@ import mongoose, { Document, Schema, Types } from 'mongoose'
 
 enum PostType {
     Document = 'Document',
-    Link = 'Link',
     Question = 'Question',
 }
 
